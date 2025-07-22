@@ -17,6 +17,18 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+  nginx:
+    image: nginx:latest
+    restart: always
+    ports:
+      - 8081:80
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./artifacts:/data/artifacts
+      - ./videos:/data/videos
+      - ./har:/data/har
+      - ./log:/data/log
+
   skyvern:
     image: public.ecr.aws/skyvern/skyvern:latest
     restart: on-failure
@@ -107,6 +119,11 @@ services:
     # - LLM_KEY=GROQ
     # - GROQ_API_KEY=<your_groq_api_key>
     # - GROQ_MODEL=llama-3.1-8b-instant
+      - LLM_KEY=OPENAI_COMPATIBLE
+      - ENABLE_OPENAI_COMPATIBLE=true
+      - OPENAI_COMPATIBLE_API_KEY=sk-16650834a7ec4f7793b41485fd860cf2
+      - OPENAI_COMPATIBLE_API_BASE=https://dashscope.aliyuncs.com/compatible-mode/v1
+      - OPENAI_COMPATIBLE_MODEL_NAME=qwen-plus
 
     # Maximum tokens to use: (only set for OpenRouter and Ollama)
     # - LLM_CONFIG_MAX_TOKENS=128000
