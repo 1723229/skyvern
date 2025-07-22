@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime, timedelta
 from typing import Any, List, Sequence
@@ -2985,7 +2986,7 @@ class AgentDB:
         runnable_type: str | None = None,
         runnable_id: str | None = None,
         timeout_minutes: int | None = None,
-    ) -> PersistentBrowserSession:
+    ) -> PersistentBrowserSessionModel:
         """Create a new persistent browser session."""
         try:
             async with self.Session() as session:
@@ -3010,8 +3011,6 @@ class AgentDB:
         self,
         browser_session_id: str,
         browser_address: str,
-        ip_address: str,
-        ecs_task_arn: str | None,
         organization_id: str | None = None,
     ) -> None:
         """Set the browser address for a persistent browser session."""
@@ -3027,8 +3026,6 @@ class AgentDB:
                 ).first()
                 if persistent_browser_session:
                     persistent_browser_session.browser_address = browser_address
-                    persistent_browser_session.ip_address = ip_address
-                    persistent_browser_session.ecs_task_arn = ecs_task_arn
                     # once the address is set, the session is started
                     persistent_browser_session.started_at = datetime.utcnow()
                     await session.commit()
@@ -3353,3 +3350,21 @@ class AgentDB:
                 query = query.filter_by(organization_id=organization_id)
             task_run = (await session.scalars(query)).first()
             return Run.model_validate(task_run) if task_run else None
+
+    async def wait_on_persistent_browser_address(self, session_id: str, organization_id: str) -> str:
+        async with asyncio.timeout(10 * 60):
+            while True:
+                persistent_browser_session = await self.get_persistent_browser_session(session_id, organization_id)
+                if persistent_browser_session is None:
+                    raise Exception(f"Persistent browser session not found for {session_id}")
+
+                LOG.info(
+                    "Checking browser address",
+                    session_id=session_id,
+                    address=persistent_browser_session.browser_address,
+                )
+
+                if persistent_browser_session.browser_address:
+                    return persistent_browser_session.browser_address
+
+                await asyncio.sleep(2)

@@ -264,14 +264,8 @@ class EmptyScrapePage(SkyvernException):
 
 
 class ScrapingFailed(SkyvernException):
-    def __init__(self, *, reason: str | None = None) -> None:
-        self.reason = reason
-        super().__init__("Scraping failed.")
-
-
-class ScrapingFailedNoUrl(ScrapingFailed):
     def __init__(self) -> None:
-        super().__init__(reason="A URL is missing. Please ensure there is a URL for Skyvern to work with.")
+        super().__init__("Scraping failed.")
 
 
 class WorkflowRunContextNotInitialized(SkyvernException):
@@ -739,8 +733,3 @@ class BrowserSessionNotFound(SkyvernHTTPException):
 class APIKeyNotFound(SkyvernHTTPException):
     def __init__(self, organization_id: str) -> None:
         super().__init__(f"No valid API key token found for organization {organization_id}")
-
-
-class ElementOutOfCurrentViewport(SkyvernException):
-    def __init__(self, element_id: str):
-        super().__init__(f"Element {element_id} is out of current viewport")

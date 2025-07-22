@@ -749,19 +749,17 @@ class ForgeAgent:
                 close_browser_on_completion=close_browser_on_completion and browser_session_id is None,
             )
             return step, detailed_output, None
-        except ScrapingFailed as sfe:
+        except ScrapingFailed:
             LOG.warning(
                 "Scraping failed, marking the task as failed",
                 task_id=task.task_id,
                 step_id=step.step_id,
                 exc_info=True,
             )
-
             await self.fail_task(
                 task,
                 step,
-                sfe.reason
-                or "Skyvern failed to load the website. This usually happens when the website is not properly designed, and crashes the browser as a result.",
+                "Skyvern failed to load the website. This usually happens when the website is not properly designed, and crashes the browser as a result.",
             )
             await self.clean_up_task(
                 task=task,
@@ -1524,20 +1522,7 @@ class ForgeAgent:
                 window_dimension=window_dimension,
             )
         else:
-            current_context = skyvern_context.ensure_context()
-            resp_content = None
-            if task.task_id in current_context.totp_codes:
-                verification_code = current_context.totp_codes[task.task_id]
-                current_context.totp_codes.pop(task.task_id)
-                LOG.info(
-                    "Using verification code from context for anthropic CU call",
-                    task_id=task.task_id,
-                    verification_code=verification_code,
-                )
-                resp_content = f"Here is the verification code: {verification_code}"
-
             llm_response = await llm_caller.call(
-                prompt=resp_content,
                 step=step,
                 screenshots=scraped_page.screenshots,
                 use_message_history=True,

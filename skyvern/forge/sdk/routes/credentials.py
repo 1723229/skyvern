@@ -61,7 +61,6 @@ async def send_totp_code(
         totp_identifier=data.totp_identifier,
         task_id=data.task_id,
         workflow_id=data.workflow_id,
-        workflow_run_id=data.workflow_run_id,
     )
     content = data.content.strip()
     code: str | None = content

@@ -306,6 +306,7 @@ function NodeHeader({
         title: "Workflow Canceled",
         description: "The workflow has been successfully canceled.",
       });
+      navigate(`/workflows/${workflowPermanentId}/debug`);
     },
     onError: (error) => {
       toast({

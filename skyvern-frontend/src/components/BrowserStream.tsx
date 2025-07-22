@@ -1,26 +1,20 @@
-import RFB from "@novnc/novnc/lib/rfb.js";
-import { ExitIcon, HandIcon } from "@radix-ui/react-icons";
-import { useEffect, useState, useRef, useCallback } from "react";
-
 import { Status } from "@/api/types";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { HandIcon, StopIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { statusIsNotFinalized } from "@/routes/tasks/types";
+import { useCredentialGetter } from "@/hooks/useCredentialGetter";
+import { envCredential } from "@/util/env";
+import { toast } from "@/components/ui/use-toast";
+import RFB from "@novnc/novnc/lib/rfb.js";
+import { environment, wssBaseUrl, newWssBaseUrl } from "@/util/env";
+import { cn } from "@/util/utils";
+import { useClientIdStore } from "@/store/useClientIdStore";
 import type {
   TaskApiResponse,
   WorkflowRunStatusApiResponse,
 } from "@/api/types";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { toast } from "@/components/ui/use-toast";
-import { useCredentialGetter } from "@/hooks/useCredentialGetter";
-import { statusIsNotFinalized } from "@/routes/tasks/types";
-import { useClientIdStore } from "@/store/useClientIdStore";
-import {
-  envCredential,
-  environment,
-  wssBaseUrl,
-  newWssBaseUrl,
-} from "@/util/env";
-import { cn } from "@/util/utils";
-
 import "./browser-stream.css";
 
 interface CommandTakeControl {
@@ -35,8 +29,6 @@ type Command = CommandTakeControl | CommandCedeControl;
 
 type Props = {
   browserSessionId?: string;
-  interactive?: boolean;
-  showControlButtons?: boolean;
   task?: {
     run: TaskApiResponse;
   };
@@ -49,8 +41,6 @@ type Props = {
 
 function BrowserStream({
   browserSessionId = undefined,
-  interactive = true,
-  showControlButtons = undefined,
   task = undefined,
   workflow = undefined,
   // --
@@ -75,8 +65,9 @@ function BrowserStream({
   } else {
     throw new Error("No browser session, task or workflow provided");
   }
-  const [userIsControlling, setUserIsControlling] = useState(false);
+
   const [commandSocket, setCommandSocket] = useState<WebSocket | null>(null);
+  const [userIsControlling, setUserIsControlling] = useState<boolean>(false);
   const [vncDisconnectedTrigger, setVncDisconnectedTrigger] = useState(0);
   const prevVncConnectedRef = useRef<boolean>(false);
   const [isVncConnected, setIsVncConnected] = useState<boolean>(false);
@@ -282,13 +273,13 @@ function BrowserStream({
       commandSocket.send(JSON.stringify(command));
     };
 
-    if (interactive) {
+    if (userIsControlling) {
       sendCommand({ kind: "take-control" });
     } else {
       sendCommand({ kind: "cede-control" });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interactive, isCommandConnected]);
+  }, [userIsControlling, isCommandConnected]);
 
   // Effect to show toast when task or workflow reaches a final state based on hook updates
   useEffect(() => {
@@ -322,49 +313,40 @@ function BrowserStream({
     }
   }, [task, workflow]);
 
-  const theUserIsControlling =
-    userIsControlling || (interactive && !showControlButtons);
-
   return (
     <div
       className={cn("browser-stream", {
-        "user-is-controlling": theUserIsControlling,
+        "user-is-controlling": userIsControlling,
       })}
       ref={setCanvasContainerRef}
     >
       {isVncConnected && (
-        <div className="overlay z-10 flex items-center justify-center">
-          {showControlButtons && (
-            <div className="control-buttons pointer-events-none relative flex h-full w-full items-center justify-center">
+        <div className="overlay-container">
+          <div className="overlay">
+            <Button
+              className={cn(
+                "take-control absolute bottom-[-1rem] left-[1rem]",
+                { hide: userIsControlling },
+              )}
+              type="button"
+              onClick={() => setUserIsControlling(true)}
+            >
+              <HandIcon className="mr-2 h-4 w-4" />
+              interact
+            </Button>
+            <div className="absolute bottom-[-1rem] right-[1rem]">
               <Button
-                onClick={() => {
-                  setUserIsControlling(true);
-                }}
-                className={cn("control-button pointer-events-auto border", {
-                  hide: userIsControlling,
+                className={cn("relinquish-control", {
+                  hide: !userIsControlling,
                 })}
-                size="sm"
+                type="button"
+                onClick={() => setUserIsControlling(false)}
               >
-                <HandIcon className="mr-2 h-4 w-4" />
-                take control
-              </Button>
-              <Button
-                onClick={() => {
-                  setUserIsControlling(false);
-                }}
-                className={cn(
-                  "control-button pointer-events-auto absolute bottom-0 border",
-                  {
-                    hide: !userIsControlling,
-                  },
-                )}
-                size="sm"
-              >
-                <ExitIcon className="mr-2 h-4 w-4" />
-                cede control
+                <StopIcon className="mr-2 h-4 w-4" />
+                stop interacting
               </Button>
             </div>
-          )}
+          </div>
         </div>
       )}
       {!isVncConnected && (
